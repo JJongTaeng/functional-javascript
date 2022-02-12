@@ -99,8 +99,10 @@ log(add10(10));
 - 이터러블/이터레이터 프로토콜: 이터러블을 for...of, 전개 연산자 등과 함께 동작하도록한 규약
 
 ### 사용자 정의 이터러블
+
 - well-formed iterator는 이터레이터 또한 이터러블하게 구현되어있다.
 - 이터레이터는 자기자신(이터레이터)를 반환하는 이터레이터 심볼함수를 갖고있다.
+
 ```javascript
  const iterable = {
   [Symbol.iterator]() {
@@ -117,12 +119,16 @@ log(add10(10));
 };
 let iterator = iterable[Symbol.iterator](); // 자신의 이터레이터를 반환
 
-for (const a of iterator) log(a);
+for(const a of iterator) log(a);
 ```
+
 - 많은 라이브러리와 Web API 또한 이터러블/이터레이터 프로토콜을 따릅니다.
 - DOM, Facebook(Immutable JS) 등
+
 ### 전개 연산자
+
 - 전개연산자 또한 마찬가지로 이터러블/이터레이터 프로토콜을 따릅니다.
+
 ```javascript
 const a = [1, 2];
 a[Symbol.iterator] = null;
@@ -134,58 +140,182 @@ log([...a]); // error
 ## 제너레이터와 이터레이터
 
 ### 제너레이터와 이터레이터
+
 - 제너레이터: 이터레이터이자 이터러블을 생성하는 함수
 - 제너레이터 함수를 실행하면 이터레이터가 반한됩니다.
 - 즉 제너레이터는 well-formed 이터레이터를 쉽게 만들어줌
+
 ```javascript
 function* gen() {
   yield 1;
-  if (false) yield 2;
+  if(false) yield 2;
   yield 3;
 };
 let iter = gen(); // 이터레이터
 ```
+
 ### 제너레이터의 활용 - odds
+
 ```javascript
 function* infinity(i = 0) {
-  while (true) yield i++;
+  while(true) yield i++;
 }
 
 function* limit(l, iter) {
-  for (const a of iter) {
+  for(const a of iter) {
     yield a;
-    if (a == l) return;
+    if(a == l) return;
   }
 }
 
 function* odds(l) {
-  for (const a of limit(l, infinity(1))) {
-    if (a % 2) yield a;
+  for(const a of limit(l, infinity(1))) {
+    if(a % 2) yield a;
   }
 }
 
 let iter2 = odds(10);
 ```
 
-### for...of, 전개 연산자, 구조 분해, 나머지 연산자
-
 **[⬆ 상단으로](#목차)**
 
-## map, filter, reduce
+## 이터러블/이터레이터 프로토콜의 활용
 
-### map
-- 기존의 Array의 map method는 
-### 이터러블 프로토콜을 따른 map의 다형성 1
+### 이터러블 프로토콜을 따른 map의 다형성
 
-### 이터러블 프로토콜을 따른 map의 다형성 2
+- 기존의 Array의 map 메서드는 DOM의 NodeList에서는 동작하지 않습니다.
+- 아래 예시 코드로 이터레이터로 동작하게 하여 보다 다형성 높게 map을 사용할 수 있습니다.
+
+**DOM List**
+
+```javascript
+  const map = (f, iter) => {
+  let res = [];
+  for(const a of iter) {
+    res.push(f(a));
+  }
+  return res;
+};
+```
+
+```javascript
+console.log(map(el => el.nodeName, document.querySelectorAll('*')));
+```
+
+**제너레이터**
+
+```javascript
+function* gen() {
+  yield 2;
+  if(false) yield 3;
+  yield 4;
+}
+
+console.log(map(a => a * a, gen()));
+```
+
+**Map Object**
+
+```javascript
+let m = new Map();
+m.set('a', 10);
+m.set('b', 20);
+console.log(new Map(map(([k, a]) => [k, a * 2], m)));
+```
 
 ### filter
 
+```javascript
+const filter = (f, iter) => {
+  let res = [];
+  for(const a of iter) {
+    if(f(a)) res.push(a);
+  }
+  return res;
+};
+```
+
+**기본**
+
+```javascript
+const products = [
+  { name: '반팔티', price: 15000 },
+  { name: '긴팔티', price: 20000 },
+  { name: '핸드폰케이스', price: 15000 },
+  { name: '후드티', price: 30000 },
+  { name: '바지', price: 25000 }
+];
+
+console.log(...filter(p => p.price < 20000, products));
+console.log(...filter(p => p.price >= 20000, products));
+```
+
+**제너레이터**
+
+```javascript
+function* gen() {
+  yield 1;
+  yield 2;
+  yield 3;
+  yield 4;
+  yield 5;
+}
+
+console.log(map(a => a % 2, gen()));
+```
+
 ### reduce
 
-### reduce 2
+```javascript
+  const reduce = (f, acc, iter) => {
+  if(!iter) {
+    iter = acc[Symbol.iterator]();
+    acc = iter.next().value;
+  }
+  for(const a of iter) {
+    acc = f(acc, a);
+  }
+  return acc;
+};
+
+console.log(reduce(add, 0, [1, 2, 3, 4, 5])); //15
+```
+
+```javascript
+const products = [
+  { name: '반팔티', price: 15000 },
+  { name: '긴팔티', price: 20000 },
+  { name: '핸드폰케이스', price: 15000 },
+  { name: '후드티', price: 30000 },
+  { name: '바지', price: 25000 }
+];
+
+console.log(
+  reduce((total_price, product) => total_price + product.price, 0, products)
+);
+```
 
 ### map+filter+reduce 중첩 사용과 함수형 사고
+
+```javascript
+const products = [
+  { name: '반팔티', price: 15000 },
+  { name: '긴팔티', price: 20000 },
+  { name: '핸드폰케이스', price: 15000 },
+  { name: '후드티', price: 30000 },
+  { name: '바지', price: 25000 }
+];
+const add = (a, b) => a + b;
+console.log(reduce(
+  add, map(p => p.price, filter(p => p.price < 20000, products))
+));
+
+console.log(
+  reduce(
+    add,
+    filter(n => n >= 20000,
+      map(p => p.price, products))));
+```
 
 **[⬆ 상단으로](#목차)**
 
@@ -193,13 +323,237 @@ let iter2 = odds(10);
 
 ### go
 
+즉시 값을 평가함
+
+```javascript
+const go = (...args) => reduce((a, f) => f(a), args);
+go(
+  1,
+  a => a + 10,
+  a => a + 100,
+  console.log
+);
+// 111
+```
+
+- go 함수는 함수를 전달한 파라미터를 순차적으로 실행한다.
+- 첫번째 파라미터는 사용할 값을 전달하며, 두번째 부터는 순차적으로 실행할 함수를 전달한다.
+- 내부적으로 reduce 함수를 사용하여 순차적으로 실행하는 함수의 리턴 값을 다음 함수에 전달하며 실행한다.
+
 ### pipe
+
+```javascript
+const pipe = (f, ...fs) => (...as) => go(f(...as), ...fs);
+
+const sum = pipe(
+  (a, b) => a + b,
+  a => a + 100,
+  a => a + 1000
+);
+
+sum(1, 10); // 1111
+
+```
+
+- 파이프 함수는 함수를 리턴하는 함수이다.
+- 반환된 함수를 실행하면 go 함수가 실행된다.
+- 반환된 함수로 전달하는 파라미터는 pipe 함수의 첫번째 파라미터(함수)의 파라미터로 전달된다.
+- 이후 파이프 함수에 2번째 부터 전달한 파라미터가 go 함수로 순차적으로 실행된다.
+- 마찬가지로 go함수는 reduce함수이므로 파라미터(함수)가 반환한 값을 다음 파라미터(함수)의 파라미터로 전달한다.
 
 ### go를 사용하여 읽기 좋은 코드로 만들기
 
+```javascript
+const products = [
+  { name: '반팔티', price: 15000 },
+  { name: '긴팔티', price: 20000 },
+  { name: '핸드폰케이스', price: 15000 },
+  { name: '후드티', price: 30000 },
+  { name: '바지', price: 25000 }
+];
+const add = (a, b) => a + b;
+console.log(reduce( // 이전 코드
+  add, map(p => p.price, filter(p => p.price < 20000, products))
+));
+
+const go = (...args) => reduce((a, f) => f(a), fs);
+
+go( // go를 사용한 코드
+  products,
+  products => map(product => product.price, products),
+  products => filter(price => price < 20000, products),
+  products => reduce(add, 0, products),
+  console.log
+)
+
+```
+
+### curry
+
+```javascript
+const curry = f => (a, ..._) => _.length ? f(a, ..._) : (..._) => f(a, ..._);
+
+const mult = curry((a, b) => a * b);
+mult(2) // (..._) => ((a, b) => a * b)(2, ..._);
+mult(2)(3); // 6
+
+const mult3 = mult(3);
+mult3(3) // 9;
+mult3(4) // 12;
+```
+
+- curry 함수는 함수의 인자가 1개만 넘어오면, 함수를 실행하지 않고, 파라미터로 받은 함수를 반환한다.
+- 파라미터로 반환한 함수를 재 실행하면 이전에 전달했던 파라미터와 함께 실행한다.
+
 ### go+curry를 사용하여 더 읽기 좋은 코드로 만들기
 
+```javascript
+const curry = f => (a, ..._) => _.length ? f(a, ..._) : (..._) => f(a, ..._);
+const go = (...args) => reduce((a, f) => f(a), args);
+
+const map = curry((f, iter) => {
+  const result = [];
+  for(const a of iter) {
+    result.push(f(a));
+  }
+  return result;
+});
+
+const filter = curry((f, iter) => {
+  const result = [];
+  for(const a of iter) {
+    if(f(a)) result.push(a);
+  }
+  return result;
+});
+
+const reduce = curry((f, acc, iter) => {
+  if(!iter) {
+    iter = acc[Symbol.iterator]();
+    acc = iter.next().value;
+  }
+  for(const a of iter) {
+    acc = f(acc, a);
+  }
+  return acc;
+});
+
+// curry 가 적용되기 전
+go(
+  products,
+  products => map(product => product.price, products),
+  products => filter(price => price < 20000, products),
+  products => reduce(add, 0, products),
+  console.log
+)
+
+// curry가 적용된 후
+go(
+  products,
+  products => map(product => product.price)(products),
+  products => filter(price => price < 20000)(products),
+  products => reduce(add)(products),
+  console.log
+)
+
+// 하나의 인자를 전달하면 다음 인자를 받는 함수를 반환 (최종)
+go(
+  products,
+  map(product => product.price),
+  filter(price => price < 20000),
+  reduce(add),
+  console.log
+)
+```
+
 ### 함수 조합으로 함수 만들기
+
+```javascript
+const products = [
+  { name: '반팔티', price: 15000 },
+  { name: '긴팔티', price: 20000 },
+  { name: '핸드폰케이스', price: 15000 },
+  { name: '후드티', price: 30000 },
+  { name: '바지', price: 25000 }
+];
+const curry = (f) => (a, ..._) => _.length ? f(a, ..._) : (..._) => f(a, ..._);
+const map = curry((f, iter) => {
+  const res = [];
+  for(const a of iter) {
+    res.push(f(a));
+  }
+  return res;
+});
+
+const filter = curry((f, iter) => {
+  const res = [];
+  for(const a of iter) {
+    if(f(a)) {
+      res.push(a);
+    }
+  }
+  return res;
+});
+
+const reduce = curry((f, acc, iter) => {
+  if(!iter) {
+    iter = acc[Symbol.iterator]();
+    acc = iter.next().value;
+  }
+  for(const a of iter) {
+    acc = f(acc, a);
+  }
+  return acc;
+});
+const go = (...args) => reduce((a, f) => f(a), args);
+const pipe = (f, ...fs) => (...as) => go(f(...as), ...fs);
+
+const add = (a, b) => a + b;
+go(
+  products,
+  filter(product => product.price < 20000),
+  map(product => product.price),
+  reduce(add),
+  console.log
+)
+
+// --- 함수 조합
+const totalPrice = pipe(
+  map(product => product.price),
+  reduce(add),
+);
+
+go(
+  products,
+  filter(product => product.price < 20000),
+  totalPrice,
+  console.log
+)
+
+go(
+  products,
+  filter(product => product.price > 20000),
+  totalPrice,
+  console.log
+)
+
+const baseTotalPrice = predi => pipe(
+  filter(predi),
+  totalPrice,
+)
+
+go(
+  products,
+  baseTotalPrice(product => product.price < 20000),
+  console.log
+)
+
+go(
+  products,
+  baseTotalPrice(product => product.price > 20000),
+  console.log
+)
+```
 
 **[⬆ 상단으로](#목차)**
 
